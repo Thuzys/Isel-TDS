@@ -23,7 +23,7 @@ class BSTreeTest{
     }
     @Test fun `Create a tree with multiple starting nodes`() {
         val t1 = bsTreeOf("ISEL","TDS","IPL","Kotlin")
-        // t1.root = Node(elem="TDS", left=Node("IPL"), right=Node("TDS", left=Node("Kotlin")))
+        // t1.root = Node(elem="ISEL", left=Node("IPL"), right=Node("TDS", left=Node("Kotlin")))
         assertTrue( listOf("TDS","ISEL","IPL","Kotlin").all { it in t1 })
         assertEquals(3, t1.height) // 3 nodes in the longest path
     }
