@@ -10,7 +10,6 @@ class Date(val day: Int = 1, val month: Int = 1, val year:Int) {
     private fun isleapYear() = year%400 ==0 || year%4 == 0 && year%100 != 0
     val isLeapYear get() = isleapYear()
 }
-
 tailrec fun Date.addDays(days: Int):Date =when{
     day+days <= lastDayOfTheMonth ->
         Date(day+days, month, year)
