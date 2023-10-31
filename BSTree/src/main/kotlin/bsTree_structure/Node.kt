@@ -1,5 +1,4 @@
 package bsTree_structure
-
 internal class Node<T: Comparable<T>>(val elem: T, var left: Node<T>? = null, var rigth: Node<T>? = null) {
     fun addNode(e: T) {
         val dif = e.compareTo(elem)
