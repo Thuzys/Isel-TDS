@@ -10,7 +10,6 @@ internal class Node<T: Comparable<T>>(val elem: T, var left: Node<T>? = null, va
                 else
                     rigth = Node(e)
             }
-
             else -> {
                 if (left != null)
                     left?.addNode(e)
