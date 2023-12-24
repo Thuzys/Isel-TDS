@@ -1,0 +1,30 @@
+@startuml
+
+skinparam componentStyle rectangle
+
+package model{
+    [Board] ..> [Player]
+    [Board] ..> [Position]
+    [Game] ..> [Board]
+    [Game] ..> [Player]
+}
+
+package view{
+    [Command]
+    [Input]
+    [Output]
+}
+
+package storage{
+    [BoardSerializer] ..> [Serializer]
+    [GameSerializer] ..> [Serializer]
+    [TextFileStore] ..> [Store]
+    [TextFileStore] ..> [GameSerializer]
+    [GameSerializer] ..> [BoardSerializer]
+}
+
+[Command] -> [Game]
+[Output] -> [Game]
+[Command] -> [TextFileStore]
+
+@enduml

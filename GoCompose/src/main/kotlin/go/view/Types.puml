@@ -1,0 +1,38 @@
+@startuml
+
+abstract class Command{
+    +execute()
+    +isToFinish
+}
+object Play
+object New
+object Pass
+object Save
+object Load
+object Exit
+object Delete
+object Update
+
+Command <|-- Play
+Command <|-- New
+Command <|-- Pass
+Command <|-- Save
+Command <|-- Load
+Command <|-- Exit
+Command <|-- Delete
+Command <|-- Update
+
+object CommandLine{
+    +name
+    +args
+    +readCommandLine()
+}
+
+object Output{
+    +Game.show()
+    -Map<Player?, K>.show()
+    -Board.show()
+    -printCurrLine()
+}
+
+@enduml

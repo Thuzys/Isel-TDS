@@ -1,0 +1,27 @@
+@startuml
+
+interface Serielizer{
+    +serializer()
+    +deserializer()
+}
+
+interface Storage{
+    +create()
+    +read()
+    +update()
+    +delete()
+}
+
+class TextFileStore{
+    -baseDirectory
+    -serializer
+}
+
+
+Serielizer <|-- BoardSerializer
+Serielizer <|-- GameSerializer
+GameSerializer <|-- BoardSerializer
+Storage <|-- TextFileStore
+
+
+@enduml

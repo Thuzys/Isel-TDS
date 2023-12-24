@@ -1,0 +1,68 @@
+@startuml
+
+class Board{
+    +boardCells: BoardCells
+    +play()
+}
+note left: It's a sealed class
+
+enum Player{
+    X, O
+}
+
+class Position{
+    +idx: String
+    +toPosition()
+    +getAdj()
+    -swich()
+}
+
+object Game{
+    +board: Board?
+    +firstPlayer: Player
+    +score
+    +captured
+    +play()
+    -calcCaptured()
+    +newBoard()
+    +pass()
+    -tellWinner()
+}
+note left : It's a DataClass
+
+Game --> Board
+Game --> captured : Map<Player?, Int>
+Game --> score : Map<Player?, Double>
+Game --> Player
+
+score --> Player : Key
+score --> Double : Value
+captured --> Player : Key
+captured --> Int : Value
+
+Board --> BoardCells : BoardCells
+BoardCells --> Position : Key
+BoardCells --> Player: Value
+BoardCells : -isValid()
+BoardCells : -getGroup()
+BoardCells : -removeGroup()
+BoardCells : -calcPlay()
+BoardCells : -tellIfSurrounded()
+BoardCells : +tellCellsPoints()
+
+Board <|-- BoardRun
+
+BoardRun : +turn: Player
+BoardRun : +pass: Boolean
+BoardRun : +removed: Player?
+BoardRun --> Player
+BoardRun : +pass()
+
+Board <|-- BoardWin
+
+BoardWin --> Player
+BoardWin : +winner: Player
+
+Board <|-- BoardDraw
+
+@enduml
