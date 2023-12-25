@@ -16,7 +16,11 @@ class ClashRun(
         val game: Game,
 ): Clash(gs)
 
-fun ClashRun.play(toPosition: Position): Clash{
+class NoChangesException : IllegalStateException("No changes")
+class GameDeletedException : IllegalStateException("Game deleted")
+
+fun Clash.play(toPosition: Position): Clash{
+    check(this is ClashRun){ "Clash not started" }
     check((game.board as BoardRun).turn == me){
         "Not your turn"
     }
@@ -40,9 +44,11 @@ fun Clash.joinClash(name: String): Clash{
     return ClashRun(gs, name, Player.O, gameWithSecondPlayer)
 }
 
-fun ClashRun.refreshClash(): Clash {
-    val game = gs.read(id) ?: error("Clash $id not found")
-    return ClashRun(gs, id, me, game)
+suspend fun Clash.refreshClash(): Clash {
+    check(this is ClashRun) {"Clash not started"}
+    val newGame = gs.read(id) ?: throw GameDeletedException()
+    if (newGame.board == game.board) throw NoChangesException()
+    return ClashRun(gs, id, me, newGame)
 }
 
 fun  Clash.deleteIfIsOwner(){

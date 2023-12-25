@@ -1,10 +1,13 @@
 package go.model
 private const val FIRST_PLAYER = 1
+
+typealias Score = Map<Player?, Double>
+typealias Capture = Map<Player?, Int>
 data class Game(
     val board: Board? = null,
-    val captured: Map<Player?, Int> = (Player.entries + null).associateWith { 0 },
+    val captured: Capture = (Player.entries + null).associateWith { 0 },
     val firstPlayer: Player = Player.X,
-    val score: Map<Player?, Double> = (Player.entries + null).associateWith { 0.0 },
+    val score: Score = (Player.entries + null).associateWith { 0.0 },
     val players: Int,
     val lastPlay: Position? = null
 )
@@ -19,7 +22,7 @@ fun Game.play(pos: Position): Game{
     )
 }
 
-private fun Map<Player?, Int>.calcCaptured(new: Board, old: Board): Map<Player?, Int>{
+private fun Capture.calcCaptured(new: Board, old: Board): Capture{
     require(new is BoardRun)
     return if (new.boardCells.size <= old.boardCells.size){
         mapValues {
@@ -47,7 +50,7 @@ fun Game.pass(): Game {
         copy(board = BoardDraw(board.boardCells))
     }
 }
-private fun Map<Player?, Int>.tellWinner(board: BoardCells, firstPlayer: Player):Pair<Map<Player?, Double>, Player>?{
+private fun Capture.tellWinner(board: BoardCells, firstPlayer: Player):Pair<Score, Player>?{
     val voidPoints = board.tellVoidCellsPoints()
     val sum = mapValues { it.value + (voidPoints[it.key] ?: 0) }.mapValues {
         if (it.key == firstPlayer) {
