@@ -23,8 +23,13 @@ class AppUserInterface(driver: MongoDriver, val scope: CoroutineScope) {
         private set
     var errorMessage by mutableStateOf<String?>(null)
         private set
+    val game: Game? get() = (clash as? ClashRun)?.game
     val board: Board? get() = (clash as? ClashRun)?.game?.board
-    val score: Score get() = (clash as ClashRun).game.score
+    val score: Score? get() = game?.score
+    val canShowScore: Boolean get() = (board is BoardWin) || (board is BoardDraw)
+    val pass: Boolean get() = (clash is ClashRun) && turnAvailable
+    var showLastPos by mutableStateOf(false)
+        private set
     val me: Player? get() = (clash as? ClashRun)?.me
     val hasClash: Boolean get() = clash is ClashRun
     private var waitingJob by mutableStateOf<Job?>(null)
@@ -34,6 +39,16 @@ class AppUserInterface(driver: MongoDriver, val scope: CoroutineScope) {
 
     fun hideError(){
         errorMessage = null
+    }
+
+    fun passPlay(){
+        try {
+            check(clash is ClashRun) { "Clash not started" }
+            clash = clash.pass()
+            waitForOtherSide()
+        }catch (e: Exception){
+            errorMessage = e.message
+        }
     }
 
     fun play(pos: Position?){
@@ -96,6 +111,10 @@ class AppUserInterface(driver: MongoDriver, val scope: CoroutineScope) {
         cancelWaiting()
     }
 
+    fun showLastPos(change: Boolean){
+        showLastPos = change
+    }
+
     private fun  cancelWaiting(){
         waitingJob?.cancel()
         waitingJob = null
@@ -118,4 +137,5 @@ class AppUserInterface(driver: MongoDriver, val scope: CoroutineScope) {
         }
     }
 }
+
 
