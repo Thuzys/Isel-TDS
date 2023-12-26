@@ -28,6 +28,16 @@ value class Position private constructor(val idx: String){
 
 private fun String.switch() = "${drop(1)}${first()}"
 fun String.toPosition() = Position(this)
+
+fun Position(row: Int, col: Int): Position?{
+    try {
+        val letter = POSSIBLE_COL[col-1]
+        return Position("${row}$letter")
+    }catch(e: IndexOutOfBoundsException){
+        return null
+    }
+}
+
 fun Position.getAdj(): List<Position?>{
     val final = mutableListOf<Position?>()
     if (col - 1 == 0)  final.add(null) else final.add(Position.values[Position.getIdx(this) - 1])

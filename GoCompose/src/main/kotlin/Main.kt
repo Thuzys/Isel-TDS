@@ -1,3 +1,7 @@
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.tween
 import androidx.compose.desktop.ui.tooling.preview.Preview
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -7,7 +11,9 @@ import androidx.compose.material.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.paint
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -17,11 +23,14 @@ import go.model.*
 import go.mongo.MongoDriver
 import go.ui.AppUserInterface
 import go.ui.AppUserInterface.InputName
+import androidx.compose.foundation.Canvas
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.text.style.TextAlign
 
 const val POSSIBLE_COL = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-val CELL_SIDE = 100.dp
-val GRID_THICKNESS = 5.dp
-val BOARD_SIDE = CELL_SIDE * BOARD_SIZE.value + GRID_THICKNESS* (BOARD_SIZE.value-1)
+val CELL_SIDE = 40.dp
+val CORRECTION = 15.dp
+val BOARD_SIDE = CELL_SIDE * (BOARD_SIZE.value+2)
 @Composable
 @Preview
 fun FrameWindowScope.App(driver: MongoDriver, exitFunction: () -> Unit){
@@ -38,16 +47,11 @@ fun FrameWindowScope.App(driver: MongoDriver, exitFunction: () -> Unit){
     }
 
     MaterialTheme {
-        Column(
-            modifier = Modifier.fillMaxSize(),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ){
-            vm.board?.let {
-                BoardView(
-                    boardCells = it.boardCells,
-                    onClick = vm::play
-                )
-            }
+        Column(horizontalAlignment = Alignment.CenterHorizontally){
+            BoardView(
+                boardCells = vm.board?.boardCells,
+                onClick = vm::play
+            )
             StatusBar(vm.board, vm.me)
         }
         vm.inputName?.let {
@@ -58,16 +62,28 @@ fun FrameWindowScope.App(driver: MongoDriver, exitFunction: () -> Unit){
             )
         }
         vm.errorMessage?.let { ErrorDialog(it, onClose = vm::hideError) }
-        if(vm.isWaiting) waitingIndicator()
+        if(vm.isWaiting) WaitingIndicator()
     }
 
 }
 
 @Composable
-fun waitingIndicator() = CircularProgressIndicator(
-    Modifier.fillMaxSize().padding(30.dp),
-    strokeWidth = 15.dp
-)
+fun WaitingIndicator() {
+    val animatedProgress = animateFloatAsState(
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(
+                durationMillis = 5000, // Set duration to 500 milliseconds
+                easing = LinearEasing
+            )
+        )
+    ).value
+
+    CircularProgressIndicator(
+        modifier = Modifier.fillMaxSize().padding(30.dp),
+        strokeWidth = 15.dp
+    )
+}
 
 @OptIn(ExperimentalMaterialApi::class)
 @Composable
@@ -135,7 +151,7 @@ fun ScoreDialog(score: Map<Player?, Int>, closeDialog: () -> Unit) =
                 Column( horizontalAlignment = Alignment.CenterHorizontally){
                     Player.entries.forEach { player ->
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Cell( player, size = 20.dp)
+                            //Cell( player, size = 20.dp)
                             Text(
                                 text = " - ${score[player]}",
                                 style = MaterialTheme.typography.h4
@@ -147,63 +163,120 @@ fun ScoreDialog(score: Map<Player?, Int>, closeDialog: () -> Unit) =
             }
         }
     )
-
-
 @Composable
 fun StatusBar(board: Board?, me: Player?){
-    Row {
+    Row(
+        modifier = Modifier
+            .height(CELL_SIDE+10.dp)
+            .width(CELL_SIDE*(BOARD_SIZE.value+0.5f))
+            .background(color = Color.LightGray)
+    ) {
+        val size = CELL_SIDE+10.dp
         me?.let {
             Text("You", style = MaterialTheme.typography.h4)
-            Cell(player = it, size = 50.dp)
+            ShowPlayer(player = it)
             Spacer(Modifier.width(30.dp))
         }
         val (text, player) = when(board){
-            is BoardRun -> "Turn:" to board.turn
-            is BoardDraw -> "Draw:" to null
-            is BoardWin -> "Winner:" to board.winner
+            is BoardRun -> "Turn" to board.turn
+            is BoardDraw -> "Draw" to null
+            is BoardWin -> "Winner" to board.winner
             null -> "Game not started" to null
         }
-        Text(text = text, style = MaterialTheme.typography.h4)
-        Cell(player, size = 50.dp)
+        Text(
+            text = text,
+            style = MaterialTheme.typography.h5,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.weight(1f)
+                .fillMaxHeight()
+        )
+        if (player != null) ShowPlayer(player)
     }
 }
-
 @Composable
-fun BoardView(boardCells: BoardCells, onClick: (Position)->Unit) =
-    Column (
-        modifier = Modifier
-            .background(Color.Black)
-            .size(CELL_SIDE),
-        verticalArrangement = Arrangement.SpaceBetween
-    ){
-        repeat(BOARD_SIZE.value){ row ->
-            Row (
-                modifier = Modifier.fillMaxWidth().height(CELL_SIDE),
-                horizontalArrangement = Arrangement.SpaceBetween
-            ){
-                repeat(BOARD_SIZE.value){ col ->
-                    val idx = "${row+1}${POSSIBLE_COL[col]}"
-                    val pos = idx.toPosition()
-                    Cell(
-                        boardCells.get(pos),
-                        onClick = { onClick(pos) }
-                    )
+fun ShowPlayer(player: Player){
+    val modifier = Modifier.fillMaxHeight()
+    val filename = when (player){
+        Player.X -> "blackStone.png"
+        Player.O -> "whiteStone.png"
+    }
+    Image(
+        painter = painterResource(filename),
+        contentDescription = "Player $player",
+        modifier = modifier
+    )
+}
+@Composable
+fun BoardView(boardCells: BoardCells?, onClick: (Position?) -> Unit) =
+    Column{
+        repeat(BOARD_SIZE.value+1) { row ->
+            Row{
+                repeat(BOARD_SIZE.value+1) { col ->
+                    if (row == 0)
+                        ShowColumnsIdx(col, CELL_SIDE)
+                    else if(col == 0){
+                        ShowRowIdx(row, CELL_SIDE)
+                    }
+                    else {
+                        val pos = Position(row, col)
+                        Cell(
+                            boardCells?.get(pos),
+                            onClick = { onClick(pos) },
+                            row = row,
+                            col = col
+                        )
+                    }
                 }
             }
         }
     }
+@Composable
+fun ShowRowIdx(row: Int, size: Dp){
+    val modifier = Modifier.size(size-CORRECTION, size)
+        .paint(painterResource("board.png"), contentScale = ContentScale.FillBounds)
+    Box(modifier = modifier){
+        Text(
+            text = "${BOARD_SIZE.value-row+1}",
+            textAlign = TextAlign.Center,
+            style = MaterialTheme.typography.h6,
+            modifier = modifier
+        )
+    }
+}
+@Composable
+fun ShowColumnsIdx(col: Int,size: Dp){
+    val modifier = Modifier.size(size-CORRECTION/9, size-CORRECTION)
+        .paint(painterResource("board.png"), contentScale = ContentScale.FillBounds)
+    Box(modifier = modifier){
+        when(col){
+            0 -> Text(
+                text = "    ",
+                textAlign = TextAlign.Center,
+                style = MaterialTheme.typography.h6,
+                modifier = modifier
+            )
+            else -> Text(
+                text = "${POSSIBLE_COL[col-1]}  ",
+                textAlign = TextAlign.Center,
+                style = MaterialTheme.typography.h6,
+                modifier = modifier
+            )
+        }
+    }
+}
 
 @Composable
-fun Cell(player: Player?, size: Dp = 100.dp, onClick: () -> Unit={}){
+fun Cell(player: Player?, size: Dp = 40.dp, onClick: () -> Unit={}, row: Int, col: Int){
     val modifier = Modifier.size(size)
-        .background(color = Color.White)
+        .paint(painterResource("board.png"), contentScale = ContentScale.FillBounds)
     if (player == null){
-        Image(
-            painter = painterResource("board.png"),
-            contentDescription = "Without player",
-            modifier = modifier
+        Box(modifier.clickable(onClick = onClick)){
+            DrawCross(
+                col = col,
+                row = row,
+                modifier = modifier
             )
-        Box(modifier.clickable(onClick = onClick))
+        }
     }else{
         val filename = when (player){
             Player.X -> "blackStone.png"
@@ -216,15 +289,167 @@ fun Cell(player: Player?, size: Dp = 100.dp, onClick: () -> Unit={}){
         )
     }
 }
+@Composable
+fun DrawCross(col: Int,row: Int, modifier: Modifier){
+    val strokeWidth = 2f
+    Canvas(modifier= modifier){
+        when{
+            col == 1 && row == 1  -> {
+                // Horizontal Line
+                drawLine(
+                    color = Color.Black,
+                    start = Offset(center.x, center.y),
+                    end = Offset(size.width, center.y),
+                    strokeWidth = strokeWidth
+                )
+                // Vertical Line
+                drawLine(
+                    color = Color.Black,
+                    start = Offset(center.x, center.y),
+                    end = Offset(center.x, size.height),
+                    strokeWidth = strokeWidth
+                )
+            }
+            col == 1  && row == 9-> {
+                // Horizontal Line
+                drawLine(
+                    color = Color.Black,
+                    start = Offset(center.x, center.y),
+                    end = Offset(size.width, center.y),
+                    strokeWidth = strokeWidth
+                )
+                // Vertical Line
+                drawLine(
+                    color = Color.Black,
+                    start = Offset(center.x, center.y),
+                    end = Offset(center.x, 0f),
+                    strokeWidth = strokeWidth
+                )
+            }
+            col == 1 ->{
+                // Horizontal Line
+                drawLine(
+                    color = Color.Black,
+                    start = Offset(center.x, center.y),
+                    end = Offset(size.width, center.y),
+                    strokeWidth = strokeWidth
+                )
+                // Vertical Line
+                drawLine(
+                    color = Color.Black,
+                    start = Offset(center.x, 0f),
+                    end = Offset(center.x, size.height),
+                    strokeWidth = strokeWidth
+                )
+            }
+            col == 9 && row == 1 -> {
+                // Horizontal Line
+                drawLine(
+                    color = Color.Black,
+                    start = Offset(center.x, center.y),
+                    end = Offset(0f, center.y),
+                    strokeWidth = strokeWidth
+                )
+                // Vertical Line
+                drawLine(
+                    color = Color.Black,
+                    start = Offset(center.x, center.y),
+                    end = Offset(center.x, size.height),
+                    strokeWidth = strokeWidth
+                )
+            }
+            col == 9 && row == 9 -> {
+                // Horizontal Line
+                drawLine(
+                    color = Color.Black,
+                    start = Offset(center.x, center.y),
+                    end = Offset(0f, center.y),
+                    strokeWidth = strokeWidth
+                )
+                // Vertical Line
+                drawLine(
+                    color = Color.Black,
+                    start = Offset(center.x, center.y),
+                    end = Offset(center.x, 0f),
+                    strokeWidth = strokeWidth
+                )
+            }
+            col == 9 -> {
+                // Horizontal Line
+                drawLine(
+                    color = Color.Black,
+                    start = Offset(center.x, center.y),
+                    end = Offset(0f, center.y),
+                    strokeWidth = strokeWidth
+                )
+                // Vertical Line
+                drawLine(
+                    color = Color.Black,
+                    start = Offset(center.x, 0f),
+                    end = Offset(center.x, size.height),
+                    strokeWidth = strokeWidth
+                )
+            }
+            row == 1 ->{
+                // Horizontal Line
+                drawLine(
+                    color = Color.Black,
+                    start = Offset(0f, center.y),
+                    end = Offset(size.width, center.y),
+                    strokeWidth = strokeWidth
+                )
+                // Vertical Line
+                drawLine(
+                    color = Color.Black,
+                    start = Offset(center.x, center.y),
+                    end = Offset(center.x, size.height),
+                    strokeWidth = strokeWidth
+                )
+            }
+            row == 9  -> {
+                // Horizontal Line
+                drawLine(
+                    color = Color.Black,
+                    start = Offset(0f, center.y),
+                    end = Offset(size.width, center.y),
+                    strokeWidth = strokeWidth
+                )
+                // Vertical Line
+                drawLine(
+                    color = Color.Black,
+                    start = Offset(center.x, center.y),
+                    end = Offset(center.x, 0f),
+                    strokeWidth = strokeWidth
+                )
+            }
+            else -> {
+                // Draw horizontal line
+                drawLine(
+                    color = Color.Black,
+                    start = Offset(0f, center.y),
+                    end = Offset(size.width, center.y),
+                    strokeWidth = strokeWidth
+                )
 
-
+                // Draw vertical line
+                drawLine(
+                    color = Color.Black,
+                    start = Offset(center.x, 0f),
+                    end = Offset(center.x, size.width),
+                    strokeWidth = strokeWidth
+                )
+            }
+        }
+    }
+}
 fun main() =
     MongoDriver("GoCluster").use { driver ->
         application {
             Window(
-                onCloseRequest = ::exitApplication,
+                onCloseRequest = {},
                 title = "Go game",
-                state = WindowState(size = DpSize.Unspecified)
+                state = WindowState(size = DpSize.Unspecified),
+                resizable = false
             ){
                 App(driver, ::exitApplication)
             }

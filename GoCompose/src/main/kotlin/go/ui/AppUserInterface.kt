@@ -3,6 +3,7 @@ package go.ui
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import com.mongodb.MongoWriteException
 import go.mongo.MongoDriver
 import go.storage.GameSerializer
 import go.storage.MongoStorage
@@ -35,9 +36,11 @@ class AppUserInterface(driver: MongoDriver, val scope: CoroutineScope) {
         errorMessage = null
     }
 
-    fun play(pos: Position){
+    fun play(pos: Position?){
         try {
+            checkNotNull(pos) { "Invalid Position" }
             clash = clash.play(pos)
+            waitForOtherSide()
         }catch (e: Exception){
             errorMessage = e.message
         }
@@ -50,24 +53,32 @@ class AppUserInterface(driver: MongoDriver, val scope: CoroutineScope) {
         inputName = null
     }
     fun  newGame(gameName: String){
-        cancelWaiting()
+        try {
+            cancelWaiting()
 
-        clash = clash.startClash(gameName)
-        inputName = null
+            clash = clash.startClash(gameName)
+            inputName = null
+        }catch (e: Exception){
+            errorMessage = e.message
+        }
     }
 
     fun joinGame(gameName: String){
-        cancelWaiting()
+        try {
+            cancelWaiting()
 
-        clash = clash.joinClash(gameName)
-        inputName = null
+            clash = clash.joinClash(gameName)
+            inputName = null
 
-        waitForOtherSide()
+            waitForOtherSide()
+        }catch (e: Exception){
+            errorMessage = e.message
+        }
     }
 
     suspend fun refreshGame(){
         try {
-            clash.refreshClash()
+            clash = clash.refreshClash()
         }catch (e: Exception){
             errorMessage = e.message
         }
@@ -96,7 +107,7 @@ class AppUserInterface(driver: MongoDriver, val scope: CoroutineScope) {
             do {
                 delay(3000)
                 try {
-                    clash = clash.refreshClash()
+                    refreshGame()
                 }catch (e : NoChangesException){ /* Ignore */ }
                 catch (e : Exception){
                     errorMessage = e.message
