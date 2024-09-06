@@ -1,5 +1,5 @@
 # Isel-TDS
-This repository contains various projects developed for the Tecnics of Software Development (TDS) course during the 3rd semester at Isel. Each project exemplifies different programming concepts and methodologies.
+This repository contains various projects developed for the Technics of Software Development (TDS) course during the 3rd semester at Isel. Each project exemplifies different programming concepts and methodologies.
 
 ## Projects
 
